@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Advanced Weather App</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #e0eafc;
+            text-align: center;
+            padding: 50px;
+        }
+
+        .card {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            display: inline-block;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+            min-width: 300px;
+        }
+
+        input {
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            width: 200px;
+        }
+
+        button {
+            padding: 12px 20px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .weather-info {
+            margin-top: 20px;
+            text-align: left;
+        }
+
+        .temp {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #333;
+            margin: 10px 0;
+        }
+
+        .icon {
+            width: 100px;
+            height: 100px;
+            margin: 0 auto;
+            display: block;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 15px;
+            font-size: 0.9rem;
+            color: #666;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="card">
+        <h1>Weather App</h1>
+        <form method="POST">
+            <input type="text" name="city" placeholder="Enter city name..." required>
+            <button type="submit">Search</button>
+        </form>
+
+        {% if weather %}
+        {% if weather.error %}
+        <p style="color: red;">{{ weather.error }}</p>
+        {% else %}
+        <div class="weather-info">
+            <h2 style="margin-bottom: 0;">{{ weather.city }}, {{ weather.country }}</h2>
+            <img class="icon" src="http://openweathermap.org/img/wn/{{ weather.icon }}@4x.png" alt="weather icon">
+            <div class="temp" style="text-align: center;">{{ weather.temp }}°C</div>
+            <p style="text-align: center; text-transform: capitalize; color: #555;">{{ weather.description }}</p>
+
+            <hr>
+
+            <div class="grid">
+                <div><strong>Feels Like:</strong> {{ weather.feels_like }}°C</div>
+                <div><strong>Humidity:</strong> {{ weather.humidity }}%</div>
+                <div><strong>Wind:</strong> {{ weather.wind_speed }} m/s</div>
+                <div><strong>Visibility:</strong> {{ weather.visibility }} km</div>
+                <div><strong>Pressure:</strong> {{ weather.pressure }} hPa</div>
+            </div>
+        </div>
+        {% endif %}
+        {% endif %}
+    </div>
+
+</body>
+
+</html>
