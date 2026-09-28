@@ -3,103 +3,246 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>Advanced Weather App</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% if weather %}{{ weather.temp }}{{ weather.temp_unit }} · {{ weather.city }} — {% endif %}Weather App</title>
+    <link rel="preconnect" href="https://openweathermap.org">
     <style>
+        :root {
+            --bg-1: #6aa8ff;
+            --bg-2: #c4e0ff;
+            --card: rgba(255, 255, 255, 0.82);
+            --text: #1d2433;
+            --muted: #5b6475;
+            --accent: #2563eb;
+            --border: rgba(0, 0, 0, 0.08);
+            --tile: rgba(255, 255, 255, 0.6);
+            --error: #b91c1c;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --card: rgba(22, 27, 38, 0.82);
+                --text: #eef2f8;
+                --muted: #a3adbf;
+                --accent: #60a5fa;
+                --border: rgba(255, 255, 255, 0.1);
+                --tile: rgba(255, 255, 255, 0.06);
+                --error: #fca5a5;
+            }
+        }
+
+        /* Background follows current conditions */
+        body.clear.day { --bg-1: #4f9bff; --bg-2: #ffd58a; }
+        body.clear.night, body.night { --bg-1: #0f1b3d; --bg-2: #3b3f7a; }
+        body.clouds { --bg-1: #7b8ba3; --bg-2: #c9d3e0; }
+        body.rain, body.drizzle { --bg-1: #3e5a78; --bg-2: #8aa4bf; }
+        body.thunderstorm { --bg-1: #2a2f45; --bg-2: #5d5a7a; }
+        body.snow { --bg-1: #a9c6e8; --bg-2: #f1f6fc; }
+        body.mist, body.fog, body.haze, body.smoke, body.dust { --bg-1: #8e9aa6; --bg-2: #d6dbe0; }
+
+        * { box-sizing: border-box; }
+
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: #e0eafc;
-            text-align: center;
-            padding: 50px;
+            margin: 0;
+            min-height: 100vh;
+            font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
+            color: var(--text);
+            background: linear-gradient(160deg, var(--bg-1), var(--bg-2)) fixed;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 40px 16px;
         }
 
         .card {
-            background: white;
-            padding: 30px;
-            border-radius: 15px;
-            display: inline-block;
-            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
-            min-width: 300px;
+            width: 100%;
+            max-width: 480px;
+            background: var(--card);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 24px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
         }
 
-        input {
-            padding: 12px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            width: 200px;
+        h1 { font-size: 1.25rem; margin: 0 0 16px; }
+
+        form { display: flex; gap: 8px; }
+
+        input[type=text] {
+            flex: 1;
+            min-width: 0;
+            padding: 12px 14px;
+            font-size: 1rem;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            background: var(--tile);
+            color: var(--text);
         }
 
-        button {
-            padding: 12px 20px;
-            background: #007bff;
-            color: white;
+        button, .chip {
+            font: inherit;
             border: none;
-            border-radius: 5px;
+            border-radius: 10px;
             cursor: pointer;
         }
 
-        .weather-info {
-            margin-top: 20px;
-            text-align: left;
-        }
+        button { padding: 12px 16px; background: var(--accent); color: #fff; }
+        button.ghost { background: var(--tile); color: var(--text); border: 1px solid var(--border); }
+        button:disabled { opacity: 0.6; cursor: wait; }
 
-        .temp {
-            font-size: 2.5rem;
-            font-weight: bold;
-            color: #333;
-            margin: 10px 0;
-        }
+        .toolbar { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; gap: 8px; flex-wrap: wrap; }
 
-        .icon {
-            width: 100px;
-            height: 100px;
-            margin: 0 auto;
-            display: block;
-        }
+        .units { display: inline-flex; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+        .units a { padding: 6px 12px; color: var(--muted); text-decoration: none; font-size: 0.9rem; }
+        .units a.active { background: var(--accent); color: #fff; }
+
+        .recent { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+        .chip { padding: 4px 10px; font-size: 0.8rem; background: var(--tile); color: var(--muted); border: 1px solid var(--border); text-decoration: none; }
+
+        .error { color: var(--error); margin-top: 16px; }
+
+        .now { text-align: center; margin-top: 20px; }
+        .now h2 { margin: 0; font-size: 1.4rem; }
+        .now .icon { width: 120px; height: 120px; margin: -8px auto -16px; display: block; }
+        .temp { font-size: 3.5rem; font-weight: 700; line-height: 1; }
+        .desc { text-transform: capitalize; color: var(--muted); margin: 6px 0 0; }
+        .range { color: var(--muted); font-size: 0.9rem; margin-top: 4px; }
 
         .grid {
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            margin-top: 15px;
-            font-size: 0.9rem;
-            color: #666;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 8px;
+            margin-top: 20px;
         }
+
+        .tile { background: var(--tile); border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; }
+        .tile .label { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+        .tile .value { font-size: 1.05rem; font-weight: 600; margin-top: 2px; }
+        .arrow { display: inline-block; }
+
+        .forecast { margin-top: 20px; }
+        .forecast h3 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); margin: 0 0 8px; }
+        .fc-row { display: grid; grid-template-columns: 56px 40px 1fr auto; align-items: center; gap: 8px; padding: 4px 0; border-top: 1px solid var(--border); }
+        .fc-row img { width: 40px; height: 40px; }
+        .fc-row .pop { color: var(--accent); font-size: 0.8rem; }
+        .fc-row .hl { font-variant-numeric: tabular-nums; }
+        .fc-row .hl span { color: var(--muted); }
     </style>
 </head>
 
-<body>
+{% set cond = weather.main|lower if weather else '' %}
+<body class="{{ cond }} {{ ('day' if weather.is_day else 'night') if weather else '' }}">
 
-    <div class="card">
-        <h1>Weather App</h1>
-        <form method="POST">
-            <input type="text" name="city" placeholder="Enter city name..." required>
+    <main class="card">
+        <h1>Weather</h1>
+
+        <form method="GET" action="/" id="search">
+            <input type="text" name="city" value="{{ city or (weather.city if weather else '') }}"
+                placeholder="Search a city (e.g. Paris, FR)" aria-label="City" required autofocus>
+            <input type="hidden" name="units" value="{{ units }}">
             <button type="submit">Search</button>
+            <button type="button" class="ghost" id="locate" title="Use my location" aria-label="Use my location">📍</button>
         </form>
 
-        {% if weather %}
-        {% if weather.error %}
-        <p style="color: red;">{{ weather.error }}</p>
-        {% else %}
-        <div class="weather-info">
-            <h2 style="margin-bottom: 0;">{{ weather.city }}, {{ weather.country }}</h2>
-            <img class="icon" src="http://openweathermap.org/img/wn/{{ weather.icon }}@4x.png" alt="weather icon">
-            <div class="temp" style="text-align: center;">{{ weather.temp }}°C</div>
-            <p style="text-align: center; text-transform: capitalize; color: #555;">{{ weather.description }}</p>
-
-            <hr>
-
-            <div class="grid">
-                <div><strong>Feels Like:</strong> {{ weather.feels_like }}°C</div>
-                <div><strong>Humidity:</strong> {{ weather.humidity }}%</div>
-                <div><strong>Wind:</strong> {{ weather.wind_speed }} m/s</div>
-                <div><strong>Visibility:</strong> {{ weather.visibility }} km</div>
-                <div><strong>Pressure:</strong> {{ weather.pressure }} hPa</div>
+        <div class="toolbar">
+            <div class="recent" id="recent"></div>
+            {% set q = 'city=' ~ (weather.city|urlencode if weather else city|urlencode) %}
+            <div class="units" role="group" aria-label="Units">
+                <a href="/?{{ q }}&units=metric" class="{{ 'active' if units == 'metric' }}">°C</a>
+                <a href="/?{{ q }}&units=imperial" class="{{ 'active' if units == 'imperial' }}">°F</a>
             </div>
         </div>
-        {% endif %}
-        {% endif %}
-    </div>
 
+        {% if error %}
+        <p class="error" role="alert">{{ error }}</p>
+        {% endif %}
+
+        {% if weather %}
+        <section class="now">
+            <h2>{{ weather.city }}{% if weather.country %}, {{ weather.country }}{% endif %}</h2>
+            <img class="icon" src="https://openweathermap.org/img/wn/{{ weather.icon }}@4x.png"
+                alt="{{ weather.description }}" width="120" height="120">
+            <div class="temp">{{ weather.temp }}{{ weather.temp_unit }}</div>
+            <p class="desc">{{ weather.description }}</p>
+            <div class="range">H {{ weather.temp_max }}° · L {{ weather.temp_min }}° · Feels like {{ weather.feels_like }}°</div>
+        </section>
+
+        <section class="grid">
+            <div class="tile"><div class="label">Humidity</div><div class="value">{{ weather.humidity }}%</div></div>
+            <div class="tile"><div class="label">Wind</div><div class="value">
+                <span class="arrow" style="transform: rotate({{ weather.wind_deg + 180 }}deg)">↑</span>
+                {{ weather.wind_speed }} {{ weather.speed_unit }}</div></div>
+            <div class="tile"><div class="label">Pressure</div><div class="value">{{ weather.pressure }} hPa</div></div>
+            {% if weather.visibility is not none %}
+            <div class="tile"><div class="label">Visibility</div><div class="value">{{ weather.visibility }} km</div></div>
+            {% endif %}
+            <div class="tile"><div class="label">Clouds</div><div class="value">{{ weather.clouds }}%</div></div>
+            {% if weather.sunrise %}
+            <div class="tile"><div class="label">Sunrise / Sunset</div><div class="value">{{ weather.sunrise }} / {{ weather.sunset }}</div></div>
+            {% endif %}
+        </section>
+
+        {% if weather.forecast %}
+        <section class="forecast">
+            <h3>5-day forecast</h3>
+            {% for d in weather.forecast %}
+            <div class="fc-row">
+                <strong>{{ d.day }}</strong>
+                <img src="https://openweathermap.org/img/wn/{{ d.icon }}.png" alt="{{ d.description }}" loading="lazy" width="40" height="40">
+                <span class="pop">{% if d.rain_chance >= 20 %}💧 {{ d.rain_chance }}%{% endif %}</span>
+                <span class="hl">{{ d.high }}° <span>/ {{ d.low }}°</span></span>
+            </div>
+            {% endfor %}
+        </section>
+        {% endif %}
+        {% endif %}
+    </main>
+
+    <script>
+        (function () {
+            const KEY = 'recentCities';
+            const units = {{ units|tojson }};
+            const current = {{ (weather.city if weather else none)|tojson }};
+
+            function load() {
+                try { return JSON.parse(localStorage.getItem(KEY)) || []; } catch (e) { return []; }
+            }
+
+            let recent = load();
+            if (current) {
+                recent = [current, ...recent.filter(c => c.toLowerCase() !== current.toLowerCase())].slice(0, 5);
+                try { localStorage.setItem(KEY, JSON.stringify(recent)); } catch (e) { }
+            }
+
+            const box = document.getElementById('recent');
+            recent.filter(c => c !== current).forEach(c => {
+                const a = document.createElement('a');
+                a.className = 'chip';
+                a.textContent = c;
+                a.href = '/?city=' + encodeURIComponent(c) + '&units=' + units;
+                box.appendChild(a);
+            });
+
+            const form = document.getElementById('search');
+            form.addEventListener('submit', () => form.querySelector('button[type=submit]').disabled = true);
+
+            const locate = document.getElementById('locate');
+            if (!('geolocation' in navigator)) { locate.hidden = true; return; }
+            locate.addEventListener('click', () => {
+                locate.disabled = true;
+                navigator.geolocation.getCurrentPosition(
+                    pos => {
+                        const { latitude, longitude } = pos.coords;
+                        location.href = `/?lat=${latitude.toFixed(4)}&lon=${longitude.toFixed(4)}&units=${units}`;
+                    },
+                    () => { locate.disabled = false; alert('Could not get your location.'); },
+                    { timeout: 10000, maximumAge: 600000 }
+                );
+            });
+        })();
+    </script>
 </body>
 
 </html>
